@@ -51,6 +51,48 @@
 ## 🏗️ Architectural Design
 SignCrafter follows a component-driven architecture designed for scalability and maintainability:
 
+```mermaid
+graph TD
+    %% User Interfaces
+    subgraph Client Apps
+        WA[Web App / PWA]
+        MA[Android App]
+    end
+
+    %% Presentation Layer
+    subgraph Presentation Layer React
+        UI[UI Components]
+        Pages[Pages & Routes]
+    end
+    
+    %% State Management
+    subgraph State Management
+        Zustand[(Zustand Store)]
+    end
+
+    %% Native Bridge
+    subgraph Bridge
+        Capacitor[Capacitor SDK]
+    end
+
+    %% External Services
+    subgraph Backend & Services
+        Cloudinary[Cloudinary API]
+        Firebase[Firebase Backend]
+    end
+
+    WA --> UI
+    MA --> Capacitor
+    Capacitor --> UI
+
+    UI --> Pages
+    UI <--> Zustand
+    Pages <--> Zustand
+    
+    Zustand --> Cloudinary
+    Zustand --> Firebase
+```
+
 1. **Presentation Layer**: Built with React functional components and hooks. Organized into atomic design principles (atoms, molecules, organisms, templates).
 2. **State Management**: Uses Zustand for a global store to manage signature data (personal info, styling preferences, template choice) across the application without prop drilling.
 3. **Cross-Platform Bridge**: Uses Capacitor to provide native API access (FileSystem, Share) when running on Android, gracefully degrading to web APIs when running in a browser.
