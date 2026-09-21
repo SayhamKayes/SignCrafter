@@ -1,33 +1,26 @@
-import { useState, useEffect } from 'react';
 
-export default function Navbar() {
-    // Initialize theme from localStorage just like your vanilla app
-    const [theme, setTheme] = useState(localStorage.getItem('app_theme') || 'light');
-
-    // Update the DOM whenever the theme changes
-    useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('app_theme', theme);
-    }, [theme]);
-
-    const toggleTheme = () => {
-        setTheme(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
-    };
-
+export default function Navbar({ onGoHome }) {
     return (
         <nav className="navbar">
             <div className="nav-brand">
-                <img
-                    src="./SignCrafter-logo.png"
-                    alt="SignCrafter Log"
-                    className="nav-logo"
-                    style={{ marginRight: '8px' }}
-                />
-                {/* <span>SignCrafter</span> */}
+                <a
+                    href="/"
+                    onClick={(e) => {
+                        if (onGoHome) {
+                            e.preventDefault();
+                            onGoHome();
+                        }
+                    }}
+                    style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none', cursor: 'pointer' }}
+                    title="Back to Home"
+                >
+                    <img
+                        src="./SignCrafter-logo.png"
+                        alt="SignCrafter Logo"
+                        className="nav-logo"
+                    />
+                </a>
             </div>
-            <button className="theme-btn" aria-label="Toggle Dark Mode" onClick={toggleTheme}>
-                {theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}
-            </button>
         </nav>
     );
 }
