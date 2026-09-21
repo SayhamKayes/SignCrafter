@@ -3,7 +3,13 @@ import { useSignatureStore } from '../../store/useSignatureStore';
 import { contactIconsDB } from '../../utils/constants';
 
 export default function ContactManager() {
-    const { activeContacts, addContact, removeContact, updateContact, moveContact } = useSignatureStore();
+    const { activeContacts, addContact, removeContact, updateContact, moveContact, customContacts } = useSignatureStore();
+
+    // Merge default contacts with any custom/updated contacts from Admin
+    const allContactsDB = { ...contactIconsDB };
+    (customContacts || []).forEach(cc => {
+        allContactsDB[cc.key] = { ...allContactsDB[cc.key], ...cc };
+    });
 
     // Local state for the "Add Contact" input fields
     const [newType, setNewType] = useState('phone');
@@ -39,14 +45,9 @@ export default function ContactManager() {
                     value={newType}
                     onChange={(e) => setNewType(e.target.value)}
                 >
-                    <option value="phone">Telephone</option>
-                    <option value="email">Email</option>
-                    <option value="address">Address</option>
-                    <option value="fax">Fax</option>
-                    <option value="domain">Website</option>
-                    <option value="skype">Skype</option>
-                    <option value="whatsapp">WhatsApp</option>
-                    <option value="ctaButton">CTA Button</option>
+                    {Object.entries(allContactsDB).map(([k, c]) => (
+                        <option key={k} value={k}>{c.name}</option>
+                    ))}
                 </select>
                 <input
                     type="text"
@@ -70,12 +71,13 @@ export default function ContactManager() {
             {/* Render Active Contacts */}
             <div className="active-list">
                 {activeContacts.map((contact, index) => {
-                    const iconData = contactIconsDB[contact.type];
+                    const iconData = allContactsDB[contact.type] || contactIconsDB[contact.type];
+                    const iconUrl = iconData?.cloudinaryIconUrl || `https://img.icons8.com/ios-filled/50/ffffff/${iconData?.icon || 'link'}.png`;
 
                     return (
                         <div className="list-row" key={`${contact.type}-${index}`}>
                             <div style={{ background: '#475569', borderRadius: '6px', padding: '4px', display: 'flex' }} title={iconData?.name}>
-                                <img src={`https://img.icons8.com/ios-filled/50/ffffff/${iconData?.icon}.png`} style={{ width: '16px', height: '16px' }} alt="icon" />
+                                <img src={iconUrl} style={{ width: '16px', height: '16px' }} alt="icon" />
                             </div>
 
                             <input

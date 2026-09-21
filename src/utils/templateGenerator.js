@@ -36,12 +36,14 @@ export const generateSignatureHTML = (state) => {
     let socialHTML = '<table cellpadding="0" cellspacing="0" border="0"><tr>';
     activeSocialLinks.forEach(link => {
         if (link.url) {
-            const sData = socialsDB.find(s => s.id === link.id);
+            const customSoc = (state.customSocials || []).find(cs => cs.id === link.id);
+            const sData = customSoc || socialsDB.find(s => s.id === link.id);
             if (sData) {
+                const iconSrc = sData.cloudinaryIconUrl || `https://img.icons8.com/ios-filled/50/${sStyle.imgColor}/${sData.icon || sData.id}.png`;
                 socialHTML += `
                     <td width="28" height="28" align="center" bgcolor="${sStyle.bg}" style="border-radius: ${sStyle.radius};">
                         <a href="${link.url}" target="_blank" style="display: block; line-height: 28px;">
-                            <img src="https://img.icons8.com/ios-filled/50/${sStyle.imgColor}/${sData.icon}.png" width="16" height="16" style="display: inline-block; vertical-align: middle; border: 0;">
+                            <img src="${iconSrc}" width="16" height="16" style="display: inline-block; vertical-align: middle; border: 0;" alt="${sData.name || ''}">
                         </a>
                     </td>
                     <td width="5"></td>
@@ -50,6 +52,42 @@ export const generateSignatureHTML = (state) => {
         }
     });
     socialHTML += '</tr></table>';
+
+    // Check for custom dynamic template from Admin
+    const customTpl = (state.customTemplates || []).find(t => String(t.id) === String(currentTemplate));
+    if (customTpl && customTpl.html) {
+        let contactsHTML = '';
+        activeContacts.forEach(contact => {
+            const iconData = contactIconsDB[contact.type] || {};
+            const customContact = (state.customContacts || []).find(c => c.key === contact.type);
+            const iconUrl = customContact?.cloudinaryIconUrl || `https://img.icons8.com/ios-filled/50/${colors.conIcon?.replace('#', '') || '3b82f6'}/${iconData.icon || 'link'}.png`;
+            
+            const content = contact.isLink !== false && iconData.isLink !== false
+                ? `<a href="${(iconData.prefix || '') + (contact.value || contact.label)}" target="_blank" style="color: ${colors.contact || '#334155'}; text-decoration: none;">${contact.label}</a>`
+                : `<span style="color: ${colors.contact || '#334155'};">${contact.label}</span>`;
+            
+            contactsHTML += `
+                <div style="margin-bottom: 4px;">
+                    <img src="${iconUrl}" width="14" height="14" style="vertical-align: middle; margin-right: 6px; display: inline-block;" alt="${iconData.name || ''}" />
+                    ${content}
+                </div>
+            `;
+        });
+
+        let compiled = customTpl.html
+            .replace(/{{name}}/g, data.name || '')
+            .replace(/{{title}}/g, data.title || '')
+            .replace(/{{company}}/g, data.company || '')
+            .replace(/{{primaryColor}}/g, colors.name || '#3B82F6')
+            .replace(/{{fontFamily}}/g, fonts.name.family || 'Arial, sans-serif')
+            .replace(/{{profileImg}}/g, images.profile || '')
+            .replace(/{{logoImg}}/g, images.company || '')
+            .replace(/{{bannerImg}}/g, images.banner || '')
+            .replace(/{{contacts}}/g, contactsHTML)
+            .replace(/{{socials}}/g, socialHTML);
+
+        return compiled;
+    }
 
     let html = ``;
 

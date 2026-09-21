@@ -2,7 +2,18 @@ import { useSignatureStore } from '../../store/useSignatureStore';
 import { socialsDB } from '../../utils/constants';
 
 export default function SocialManager() {
-    const { activeSocialLinks, addSocial, removeSocial, updateSocialUrl, moveSocial } = useSignatureStore();
+    const { activeSocialLinks, addSocial, removeSocial, updateSocialUrl, moveSocial, customSocials } = useSignatureStore();
+
+    // Merge default socials with custom overrides / additions from Admin
+    const allSocials = [...socialsDB];
+    (customSocials || []).forEach(cs => {
+        const idx = allSocials.findIndex(s => s.id === cs.id);
+        if (idx >= 0) {
+            allSocials[idx] = { ...allSocials[idx], ...cs };
+        } else {
+            allSocials.push(cs);
+        }
+    });
 
     return (
         <>
@@ -10,29 +21,41 @@ export default function SocialManager() {
 
             {/* Social Gallery (Click to Add) */}
             <div className="social-gallery">
-                {socialsDB.map(s => (
-                    <button
-                        key={s.id}
-                        className="social-btn"
-                        style={{ backgroundColor: s.color }}
-                        onClick={() => addSocial(s.id)}
-                        title={`Add ${s.name}`}
-                    >
-                        <img src={`https://img.icons8.com/ios-filled/50/ffffff/${s.icon}.png`} alt={s.name} />
-                    </button>
-                ))}
+                {allSocials.map(s => {
+                    const iconUrl = s.cloudinaryIconUrl || `https://img.icons8.com/ios-filled/50/ffffff/${s.icon || s.id}.png`;
+
+                    return (
+                        <button
+                            key={s.id}
+                            className="social-btn"
+                            style={{ backgroundColor: s.color || '#3B82F6' }}
+                            onClick={() => addSocial(s.id)}
+                            title={`Add ${s.name}`}
+                        >
+                            <img 
+                                src={iconUrl} 
+                                alt={s.name}
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = "https://img.icons8.com/ios-filled/50/ffffff/link.png";
+                                }}
+                            />
+                        </button>
+                    );
+                })}
             </div>
 
             {/* Active Social Links */}
             <div className="active-list" style={{ marginTop: '16px' }}>
                 {activeSocialLinks.map((link, index) => {
-                    const sData = socialsDB.find(s => s.id === link.id);
+                    const sData = allSocials.find(s => s.id === link.id);
                     if (!sData) return null; // Safety check
+                    const iconUrl = sData.cloudinaryIconUrl || `https://img.icons8.com/ios-filled/50/ffffff/${sData.icon || sData.id}.png`;
 
                     return (
                         <div className="list-row" key={`${link.id}-${index}`}>
-                            <div style={{ background: sData.color, borderRadius: '6px', padding: '4px', display: 'flex' }}>
-                                <img src={`https://img.icons8.com/ios-filled/50/ffffff/${sData.icon}.png`} style={{ width: '16px', height: '16px' }} alt="icon" />
+                            <div style={{ background: sData.color || '#3B82F6', borderRadius: '6px', padding: '4px', display: 'flex' }}>
+                                <img src={iconUrl} style={{ width: '16px', height: '16px' }} alt="icon" />
                             </div>
 
                             <input
