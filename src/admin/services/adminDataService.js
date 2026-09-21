@@ -37,16 +37,18 @@ const setLocalData = (key, data) => {
 // =========================================================================
 
 export const fetchCustomTemplates = async () => {
-  try {
-    const colRef = collection(db, 'signcrafter_templates');
-    const snapshot = await getDocs(colRef);
-    if (!snapshot.empty) {
-      const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setLocalData(LOCAL_STORAGE_KEYS.TEMPLATES, items);
-      return items;
+  if (db) {
+    try {
+      const colRef = collection(db, 'signcrafter_templates');
+      const snapshot = await getDocs(colRef);
+      if (!snapshot.empty) {
+        const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        setLocalData(LOCAL_STORAGE_KEYS.TEMPLATES, items);
+        return items;
+      }
+    } catch (err) {
+      console.warn('Firestore fetchCustomTemplates fallback to local:', err?.message || err);
     }
-  } catch (err) {
-    console.warn('Firestore fetchCustomTemplates fallback to local:', err?.message || err);
   }
   return getLocalData(LOCAL_STORAGE_KEYS.TEMPLATES, []);
 };
@@ -69,12 +71,14 @@ export const saveCustomTemplate = async (template) => {
   }
   setLocalData(LOCAL_STORAGE_KEYS.TEMPLATES, current);
 
-  // 2. Persist to Firestore
-  try {
-    const docRef = doc(db, 'signcrafter_templates', templateId);
-    await setDoc(docRef, payload, { merge: true });
-  } catch (err) {
-    console.warn('Firestore saveCustomTemplate fallback:', err?.message || err);
+  // 2. Persist to Firestore if available
+  if (db) {
+    try {
+      const docRef = doc(db, 'signcrafter_templates', templateId);
+      await setDoc(docRef, payload, { merge: true });
+    } catch (err) {
+      console.warn('Firestore saveCustomTemplate fallback:', err?.message || err);
+    }
   }
 
   return payload;
@@ -88,12 +92,14 @@ export const deleteCustomTemplate = async (templateId) => {
   const filtered = current.filter(t => String(t.id) !== strId);
   setLocalData(LOCAL_STORAGE_KEYS.TEMPLATES, filtered);
 
-  // 2. Firestore delete
-  try {
-    const docRef = doc(db, 'signcrafter_templates', strId);
-    await deleteDoc(docRef);
-  } catch (err) {
-    console.warn('Firestore deleteCustomTemplate fallback:', err?.message || err);
+  // 2. Firestore delete if available
+  if (db) {
+    try {
+      const docRef = doc(db, 'signcrafter_templates', strId);
+      await deleteDoc(docRef);
+    } catch (err) {
+      console.warn('Firestore deleteCustomTemplate fallback:', err?.message || err);
+    }
   }
   return true;
 };
@@ -103,16 +109,18 @@ export const deleteCustomTemplate = async (templateId) => {
 // =========================================================================
 
 export const fetchCustomSocials = async () => {
-  try {
-    const colRef = collection(db, 'signcrafter_socials');
-    const snapshot = await getDocs(colRef);
-    if (!snapshot.empty) {
-      const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setLocalData(LOCAL_STORAGE_KEYS.SOCIALS, items);
-      return items;
+  if (db) {
+    try {
+      const colRef = collection(db, 'signcrafter_socials');
+      const snapshot = await getDocs(colRef);
+      if (!snapshot.empty) {
+        const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        setLocalData(LOCAL_STORAGE_KEYS.SOCIALS, items);
+        return items;
+      }
+    } catch (err) {
+      console.warn('Firestore fetchCustomSocials fallback to local:', err?.message || err);
     }
-  } catch (err) {
-    console.warn('Firestore fetchCustomSocials fallback to local:', err?.message || err);
   }
   return getLocalData(LOCAL_STORAGE_KEYS.SOCIALS, []);
 };
@@ -135,12 +143,14 @@ export const saveCustomSocial = async (social) => {
   }
   setLocalData(LOCAL_STORAGE_KEYS.SOCIALS, current);
 
-  // 2. Firestore update
-  try {
-    const docRef = doc(db, 'signcrafter_socials', socialId);
-    await setDoc(docRef, payload, { merge: true });
-  } catch (err) {
-    console.warn('Firestore saveCustomSocial fallback:', err?.message || err);
+  // 2. Firestore update if available
+  if (db) {
+    try {
+      const docRef = doc(db, 'signcrafter_socials', socialId);
+      await setDoc(docRef, payload, { merge: true });
+    } catch (err) {
+      console.warn('Firestore saveCustomSocial fallback:', err?.message || err);
+    }
   }
 
   return payload;
@@ -152,11 +162,13 @@ export const deleteCustomSocial = async (socialId) => {
   const filtered = current.filter(s => s.id !== strId);
   setLocalData(LOCAL_STORAGE_KEYS.SOCIALS, filtered);
 
-  try {
-    const docRef = doc(db, 'signcrafter_socials', strId);
-    await deleteDoc(docRef);
-  } catch (err) {
-    console.warn('Firestore deleteCustomSocial fallback:', err?.message || err);
+  if (db) {
+    try {
+      const docRef = doc(db, 'signcrafter_socials', strId);
+      await deleteDoc(docRef);
+    } catch (err) {
+      console.warn('Firestore deleteCustomSocial fallback:', err?.message || err);
+    }
   }
   return true;
 };
@@ -166,16 +178,18 @@ export const deleteCustomSocial = async (socialId) => {
 // =========================================================================
 
 export const fetchCustomContacts = async () => {
-  try {
-    const colRef = collection(db, 'signcrafter_contacts');
-    const snapshot = await getDocs(colRef);
-    if (!snapshot.empty) {
-      const items = snapshot.docs.map(d => ({ key: d.id, ...d.data() }));
-      setLocalData(LOCAL_STORAGE_KEYS.CONTACTS, items);
-      return items;
+  if (db) {
+    try {
+      const colRef = collection(db, 'signcrafter_contacts');
+      const snapshot = await getDocs(colRef);
+      if (!snapshot.empty) {
+        const items = snapshot.docs.map(d => ({ key: d.id, ...d.data() }));
+        setLocalData(LOCAL_STORAGE_KEYS.CONTACTS, items);
+        return items;
+      }
+    } catch (err) {
+      console.warn('Firestore fetchCustomContacts fallback to local:', err?.message || err);
     }
-  } catch (err) {
-    console.warn('Firestore fetchCustomContacts fallback to local:', err?.message || err);
   }
   return getLocalData(LOCAL_STORAGE_KEYS.CONTACTS, []);
 };
@@ -197,11 +211,13 @@ export const saveCustomContact = async (contact) => {
   }
   setLocalData(LOCAL_STORAGE_KEYS.CONTACTS, current);
 
-  try {
-    const docRef = doc(db, 'signcrafter_contacts', key);
-    await setDoc(docRef, payload, { merge: true });
-  } catch (err) {
-    console.warn('Firestore saveCustomContact fallback:', err?.message || err);
+  if (db) {
+    try {
+      const docRef = doc(db, 'signcrafter_contacts', key);
+      await setDoc(docRef, payload, { merge: true });
+    } catch (err) {
+      console.warn('Firestore saveCustomContact fallback:', err?.message || err);
+    }
   }
   return payload;
 };
@@ -211,11 +227,13 @@ export const deleteCustomContact = async (key) => {
   const filtered = current.filter(c => c.key !== key);
   setLocalData(LOCAL_STORAGE_KEYS.CONTACTS, filtered);
 
-  try {
-    const docRef = doc(db, 'signcrafter_contacts', key);
-    await deleteDoc(docRef);
-  } catch (err) {
-    console.warn('Firestore deleteCustomContact fallback:', err?.message || err);
+  if (db) {
+    try {
+      const docRef = doc(db, 'signcrafter_contacts', key);
+      await deleteDoc(docRef);
+    } catch (err) {
+      console.warn('Firestore deleteCustomContact fallback:', err?.message || err);
+    }
   }
   return true;
 };
@@ -224,6 +242,13 @@ export const deleteCustomContact = async (key) => {
 // 4. DATABASE HEALTH CHECK
 // =========================================================================
 export const testDatabaseConnection = async () => {
+  if (!db) {
+    return { 
+      success: false, 
+      mode: 'local_fallback', 
+      message: 'Firebase credentials missing in Vercel environment variables. Running safely in Local Resilience Mode.' 
+    };
+  }
   try {
     const colRef = collection(db, 'signcrafter_health');
     const docRef = doc(colRef, 'ping');
@@ -233,7 +258,7 @@ export const testDatabaseConnection = async () => {
     return { 
       success: false, 
       mode: 'local_fallback', 
-      message: `Firestore offline or permission pending (${err?.message || 'Access notice'}). Seamlessly operating in Local Storage Resilience mode.` 
+      message: `Firestore offline or permission pending (${err?.message || 'Access notice'}). Operating in Local Storage mode.` 
     };
   }
 };

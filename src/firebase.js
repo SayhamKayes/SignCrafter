@@ -1,8 +1,7 @@
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAnalytics, isSupported } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-
 import { 
     getFirestore, 
     collection, 
@@ -15,7 +14,7 @@ import {
     onSnapshot 
 } from "firebase/firestore";
 
-// REPLACE THESE WITH YOUR ACTUAL KEYS FROM FIREBASE!
+// Firebase Configuration sourced from environment variables
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -26,16 +25,41 @@ const firebaseConfig = {
     measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+const hasValidConfig = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
-// Export the tools we need
-export const auth = getAuth(app);
-export const provider = new GoogleAuthProvider();
-export const storage = getStorage(app);
-export const db = getFirestore(app);
+let app = null;
+let auth = null;
+let provider = null;
+let storage = null;
+let db = null;
+
+if (hasValidConfig) {
+    try {
+        app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        provider = new GoogleAuthProvider();
+        storage = getStorage(app);
+        db = getFirestore(app);
+
+        // Safe Analytics check
+        if (typeof window !== 'undefined' && firebaseConfig.measurementId) {
+            isSupported().then(supported => {
+                if (supported && app) getAnalytics(app);
+            }).catch(() => {});
+        }
+    } catch (err) {
+        console.warn("Firebase initialization warning:", err);
+    }
+} else {
+    console.warn("⚠️ Firebase environment variables not detected on this host. App will operate in resilient local/offline mode without crashing.");
+}
 
 export { 
+    app,
+    auth, 
+    provider, 
+    storage, 
+    db,
     signInWithPopup, 
     signOut, 
     onAuthStateChanged, 

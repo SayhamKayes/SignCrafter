@@ -30,7 +30,7 @@ export const useSignatureStore = create((set, get) => ({
   setCurrentUser: (user) => set({ currentUser: user }),
   logoutUser: async () => {
     try {
-      await signOut(auth);
+      if (auth) await signOut(auth);
       set({ currentUser: null });
     } catch (err) {
       console.error("Sign out error:", err);
@@ -300,18 +300,20 @@ export const useSignatureStore = create((set, get) => ({
 
 // Synchronize Firebase Auth state automatically across page reloads
 if (typeof window !== 'undefined') {
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      useSignatureStore.getState().setCurrentUser({
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL
-      });
-    } else {
-      useSignatureStore.getState().setCurrentUser(null);
-    }
-  });
+  if (auth) {
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        useSignatureStore.getState().setCurrentUser({
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL
+        });
+      } else {
+        useSignatureStore.getState().setCurrentUser(null);
+      }
+    });
+  }
 
   // Load dynamic templates and icons from Admin DB / cache
   useSignatureStore.getState().loadAdminData();
