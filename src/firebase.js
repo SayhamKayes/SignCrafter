@@ -1,7 +1,19 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+
+import { 
+    getFirestore, 
+    collection, 
+    doc, 
+    getDocs, 
+    getDoc, 
+    setDoc, 
+    updateDoc, 
+    deleteDoc, 
+    onSnapshot 
+} from "firebase/firestore";
 
 // REPLACE THESE WITH YOUR ACTUAL KEYS FROM FIREBASE!
 const firebaseConfig = {
@@ -21,5 +33,21 @@ const analytics = getAnalytics(app);
 export const auth = getAuth(app);
 export const provider = new GoogleAuthProvider();
 export const storage = getStorage(app);
+export const db = getFirestore(app);
 
-export { signInWithPopup, signOut, ref, uploadBytesResumable, getDownloadURL };
+export { 
+    signInWithPopup, 
+    signOut, 
+    onAuthStateChanged, 
+    ref, 
+    uploadBytesResumable, 
+    getDownloadURL,
+    collection, 
+    doc, 
+    getDocs, 
+    getDoc, 
+    setDoc, 
+    updateDoc, 
+    deleteDoc, 
+    onSnapshot 
+};

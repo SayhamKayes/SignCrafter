@@ -1,12 +1,61 @@
 import { create } from 'zustand';
 import { uploadImage as uploadToCloudinary } from '../cloudinary';
+import { auth, signOut, onAuthStateChanged } from '../firebase';
+import { fetchCustomTemplates, fetchCustomSocials, fetchCustomContacts } from '../admin/services/adminDataService';
+
+const getInitialTheme = () => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('app_theme');
+    if (saved) return saved;
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+  }
+  return 'light';
+};
+
+const initialTheme = getInitialTheme();
+if (typeof document !== 'undefined') {
+  document.documentElement.setAttribute('data-theme', initialTheme);
+}
 
 export const useSignatureStore = create((set, get) => ({
-  // --- STATE ---
+  // --- AUTH STATE ---
+  currentUser: null,
+  authModalOpen: false,
+  pendingUpload: null,
+
+  openAuthModal: (pending = null) => set({ authModalOpen: true, pendingUpload: pending }),
+  closeAuthModal: () => set({ authModalOpen: false, pendingUpload: null }),
+  setCurrentUser: (user) => set({ currentUser: user }),
+  logoutUser: async () => {
+    try {
+      await signOut(auth);
+      set({ currentUser: null });
+    } catch (err) {
+      console.error("Sign out error:", err);
+    }
+  },
+
+  // --- THEME ---
+  theme: initialTheme,
   isOnboardingComplete: false,
   emailClient: 'other', 
   currentTemplate: 1,
   uploadingField: null, 
+
+  toggleTheme: () => set((state) => {
+    const nextTheme = state.theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('app_theme', nextTheme);
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    return { theme: nextTheme };
+  }),
+
+  setTheme: (newTheme) => {
+    localStorage.setItem('app_theme', newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+    set({ theme: newTheme });
+  },
 
   images: {
     profile: 'https://ui-avatars.com/api/?name=Profile+Photo&background=E2E8F0&color=333&size=150',
@@ -75,8 +124,9 @@ export const useSignatureStore = create((set, get) => ({
     }));
 
     try {
-      // Passes the imageType properly to Cloudinary
-      const imageUrl = await uploadToCloudinary(file, imageType); 
+      const { currentUser } = get();
+      // Passes the imageType and current user's UID to organize in Cloudinary
+      const imageUrl = await uploadToCloudinary(file, imageType, currentUser?.uid); 
       set((state) => ({
         images: {
           ...state.images,
@@ -89,6 +139,11 @@ export const useSignatureStore = create((set, get) => ({
       set({ uploadingField: null }); 
     }
   },
+
+  setImageUrl: (imageType, url, name = '') => set((state) => ({
+    images: { ...state.images, [imageType]: url },
+    imageNames: name ? { ...state.imageNames, [imageType]: name } : state.imageNames
+  })),
 
   // // --- UPLOAD ACTION (UNLIMITED CUSTOM IMAGES) ---
   // uploadCustomImages: async (files) => {
@@ -215,4 +270,49 @@ export const useSignatureStore = create((set, get) => ({
       }
     }
   })),
+
+  // --- DYNAMIC ADMIN DATA ---
+  customTemplates: [],
+  customSocials: [],
+  customContacts: [],
+
+  setCustomTemplates: (templates) => set({ customTemplates: templates }),
+  setCustomSocials: (socials) => set({ customSocials: socials }),
+  setCustomContacts: (contacts) => set({ customContacts: contacts }),
+
+  loadAdminData: async () => {
+    try {
+      const [tpls, socs, conts] = await Promise.all([
+        fetchCustomTemplates(),
+        fetchCustomSocials(),
+        fetchCustomContacts()
+      ]);
+      set({
+        customTemplates: tpls || [],
+        customSocials: socs || [],
+        customContacts: conts || []
+      });
+    } catch (err) {
+      console.warn('Could not load dynamic admin data:', err);
+    }
+  }
 }));
+
+// Synchronize Firebase Auth state automatically across page reloads
+if (typeof window !== 'undefined') {
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      useSignatureStore.getState().setCurrentUser({
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL
+      });
+    } else {
+      useSignatureStore.getState().setCurrentUser(null);
+    }
+  });
+
+  // Load dynamic templates and icons from Admin DB / cache
+  useSignatureStore.getState().loadAdminData();
+}
