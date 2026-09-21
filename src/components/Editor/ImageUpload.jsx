@@ -1,4 +1,55 @@
+import { useState } from 'react';
 import { useSignatureStore } from '../../store/useSignatureStore';
+
+// --- USER AVATAR WITH NO-REFERRER AND GRACEFUL FALLBACK ---
+const UserAvatar = ({ user, size = 22 }) => {
+  const [imgError, setImgError] = useState(false);
+  const initial = (user?.displayName || user?.email || 'U').charAt(0).toUpperCase();
+
+  if (user?.photoURL && !imgError) {
+    return (
+      <img 
+        src={user.photoURL} 
+        alt={user.displayName || user.email || "User Avatar"} 
+        referrerPolicy="no-referrer"
+        crossOrigin="anonymous"
+        onError={() => setImgError(true)}
+        style={{ 
+          width: `${size}px`, 
+          height: `${size}px`, 
+          borderRadius: '50%', 
+          objectFit: 'cover', 
+          display: 'block',
+          border: '1.5px solid var(--primary)',
+          flexShrink: 0
+        }} 
+      />
+    );
+  }
+
+  return (
+    <div 
+      style={{ 
+        width: `${size}px`, 
+        height: `${size}px`, 
+        borderRadius: '50%', 
+        background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
+        color: '#ffffff',
+        fontSize: `${Math.max(10, Math.round(size * 0.5))}px`,
+        fontWeight: 'bold',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textTransform: 'uppercase',
+        flexShrink: 0,
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)'
+      }}
+      title={user?.displayName || user?.email || 'User Account'}
+    >
+      {initial}
+    </div>
+  );
+};
 
 // --- 1. SLIDER COMPONENT ---
 const SizeSlider = ({ label, value, min, max, onChange }) => (
@@ -41,28 +92,57 @@ const SizeSlider = ({ label, value, min, max, onChange }) => (
 );
 
 // --- 2. UPLOAD BOX COMPONENT ---
-const UploadBox = ({ title, type, uploadingField, onFileChange, hint, fileName }) => (
-  <div style={{ 
-    background: 'var(--input-bg)', 
-    padding: '15px', 
-    borderRadius: '12px', 
-    border: '1px solid var(--glass-border)',
-    textAlign: 'center'
-  }}>
-    <label style={{ fontSize: '13px', marginBottom: '10px', color: 'var(--text)' }}>{title}</label>
-    
-    <div style={{ position: 'relative', overflow: 'hidden' }}>
-      <input 
-        type="file" 
-        accept="image/*" 
-        onChange={(e) => {
-          onFileChange(e, type);
-          e.target.value = null; 
-        }} 
-        disabled={uploadingField === type}
-        style={{ width: '100%', fontSize: '11px', padding: '8px 0', cursor: 'pointer' }}
-      />
-    </div>
+const UploadBox = ({ title, type, uploadingField, onFileChange, hint, fileName, currentUser, onRequireAuth, onUseGooglePhoto }) => {
+  return (
+    <div 
+      style={{ 
+        background: 'var(--input-bg)', 
+        padding: '15px', 
+        borderRadius: '12px', 
+        border: '1px solid var(--glass-border)',
+        textAlign: 'center',
+        cursor: !currentUser ? 'pointer' : 'default',
+        position: 'relative'
+      }}
+      onClick={(e) => {
+        if (!currentUser) {
+          e.preventDefault();
+          e.stopPropagation();
+          onRequireAuth(type);
+        }
+      }}
+    >
+      <label style={{ fontSize: '13px', marginBottom: '10px', color: 'var(--text)', cursor: 'inherit', display: 'block' }}>{title}</label>
+      
+      <div style={{ position: 'relative', overflow: 'hidden' }}>
+        <input 
+          type="file" 
+          accept="image/*" 
+          onChange={(e) => {
+            onFileChange(e, type);
+            e.target.value = null; 
+          }} 
+          disabled={uploadingField === type}
+          style={{ width: '100%', fontSize: '11px', padding: '8px 0', cursor: 'pointer' }}
+        />
+        {!currentUser && (
+          <div 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onRequireAuth(type);
+            }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              cursor: 'pointer',
+              zIndex: 10,
+              background: 'transparent'
+            }}
+            title="Click to sign in with Google"
+          />
+        )}
+      </div>
 
     {/* --- File Name if it exists --- */}
     {fileName && (
@@ -77,6 +157,34 @@ const UploadBox = ({ title, type, uploadingField, onFileChange, hint, fileName }
         {hint}
       </p>
     )}
+
+    {/* --- Quick use Google profile photo shortcut --- */}
+    {onUseGooglePhoto && (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onUseGooglePhoto();
+        }}
+        style={{
+          marginTop: '8px',
+          fontSize: '11px',
+          color: 'var(--primary)',
+          background: 'rgba(59, 130, 246, 0.1)',
+          border: '1px solid rgba(59, 130, 246, 0.25)',
+          borderRadius: '6px',
+          padding: '4px 8px',
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '4px',
+          fontWeight: '600'
+        }}
+        title="Set your signature profile picture to your Google account photo"
+      >
+        <span>📷 Use Google Photo</span>
+      </button>
+    )}
     
     {uploadingField === type && (
       <span style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 'bold', display: 'block', marginTop: '5px' }}>
@@ -84,12 +192,14 @@ const UploadBox = ({ title, type, uploadingField, onFileChange, hint, fileName }
       </span>
     )}
   </div>
-);
+  );
+};
 
 // --- 3. MAIN COMPONENT ---
 export default function ImageSettings() {
   const { 
     uploadImage, 
+    setImageUrl,
     uploadingField, 
     images, 
     imageNames,
@@ -99,14 +209,26 @@ export default function ImageSettings() {
     // customImages,
     uploadCustomImages,
     // removeCustomImage
+    currentUser,
+    openAuthModal,
+    logoutUser
   } = useSignatureStore();
 
   const handleFileChange = (e, imageType) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.size > 2000000) return alert("File is too large! Please choose an image under 2MB.");
-      uploadImage(file, imageType);
+    if (!file) return;
+
+    if (file.size > 2000000) {
+      return alert("File is too large! Please choose an image under 2MB.");
     }
+
+    // If user is not logged in, prompt Google Sign-in and save file as pending
+    if (!currentUser) {
+      openAuthModal({ file, imageType });
+      return;
+    }
+
+    uploadImage(file, imageType);
   };
 
   const handleMultiFileChange = (e) => {
@@ -117,6 +239,10 @@ export default function ImageSettings() {
         alert("Some files were skipped because they are over the 2MB limit.");
       }
       if (validFiles.length > 0) {
+        if (!currentUser) {
+          openAuthModal();
+          return;
+        }
         uploadCustomImages(validFiles);
       }
     }
@@ -124,7 +250,63 @@ export default function ImageSettings() {
 
   return (
     <div className="panel" style={{ marginTop: '20px' }}>
-      <h3 style={{ marginTop: 0 }}>Images & Branding</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+        <h3 style={{ margin: 0 }}>Images & Branding</h3>
+
+        {/* User Auth Status Badge */}
+        {currentUser ? (
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            background: 'var(--input-bg)', 
+            padding: '6px 12px', 
+            borderRadius: '20px', 
+            border: '1px solid var(--glass-border)',
+            fontSize: '11px'
+          }}>
+            <UserAvatar user={currentUser} size={22} />
+            <span style={{ color: 'var(--text)', fontWeight: '600', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {currentUser.email || currentUser.displayName}
+            </span>
+            <span style={{ color: '#10B981', fontSize: '10px', fontWeight: 'bold' }}>• signcrafter images</span>
+            <button
+              onClick={logoutUser}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                fontSize: '11px',
+                padding: '0 0 0 4px',
+                textDecoration: 'underline'
+              }}
+              title="Sign out of Google"
+            >
+              Sign Out
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => openAuthModal()}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(59, 130, 246, 0.1)',
+              border: '1px solid var(--primary)',
+              color: 'var(--primary)',
+              borderRadius: '20px',
+              padding: '6px 12px',
+              fontSize: '11px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            <span>🔒 Sign In with Google</span>
+          </button>
+        )}
+      </div>
       
       <div>
         {/* TOP GRID: UPLOAD BOXES */}
@@ -137,6 +319,9 @@ export default function ImageSettings() {
             onFileChange={handleFileChange} 
             hint="Ratio must be 1:1 (Square) | 2MB max" 
             fileName={imageNames.profile}
+            currentUser={currentUser}
+            onRequireAuth={(t) => openAuthModal({ imageType: t })}
+            onUseGooglePhoto={currentUser?.photoURL ? () => setImageUrl('profile', currentUser.photoURL, 'Google Profile Photo') : null}
           />
           
           <UploadBox 
@@ -146,6 +331,8 @@ export default function ImageSettings() {
             onFileChange={handleFileChange} 
             hint="Transparent PNG recommended | 2MB max" 
             fileName={imageNames.company}
+            currentUser={currentUser}
+            onRequireAuth={(t) => openAuthModal({ imageType: t })}
           />
           
           <UploadBox 
@@ -155,6 +342,8 @@ export default function ImageSettings() {
             onFileChange={handleFileChange} 
             hint="Image ratio 67:20(268x80px) | 2MB max" 
             fileName={imageNames.banner}
+            currentUser={currentUser}
+            onRequireAuth={(t) => openAuthModal({ imageType: t })}
           />
 
         </div>
